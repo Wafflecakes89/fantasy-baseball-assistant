@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useMemo, useState } from "react";
@@ -17,8 +16,23 @@ type Player = {
   ERA?: number; WHIP?: number; KBB?: number;
 };
 
-type LeagueTeam = { id: number; name: string; slot: number; };
-type DraftPick = { overall:number; round:number; pickInRound:number; teamId:number; teamName:string; playerId:string; playerName:string; playerPos:string; mine:boolean; };
+type LeagueTeam = {
+  id: number;
+  name: string;
+  slot: number;
+};
+
+type DraftPick = {
+  overall: number;
+  round: number;
+  pickInRound: number;
+  teamId: number;
+  teamName: string;
+  playerId: string;
+  playerName: string;
+  playerPos: string;
+  mine: boolean;
+};
 
 const rosterTemplate: Record<string, number> = { C:1, "1B":1, "2B":1, SS:1, "3B":1, LF:1, CF:1, RF:1, UTIL:1, SP:6, RP:2, P:3 };
 const hittingCats = ["H","R","HR","RBI","BB","SB","AVG","OBP","SLG","TB"] as const;
@@ -49,10 +63,11 @@ function assignTier(rank:number) {
   if (rank <= 20) return "Tier 2";
   if (rank <= 40) return "Tier 3";
   if (rank <= 70) return "Tier 4";
-  if (rank <= 120) return "Tier 5";
-  if (rank <= 220) return "Tier 6";
+  if (rank <= 110) return "Tier 5";
+  if (rank <= 170) return "Tier 6";
   return "Tier 7";
 }
+
 function snakeTeamForPick(overall:number, orderedTeams:LeagueTeam[]) {
   const teams = orderedTeams.length;
   const round = Math.ceil(overall / teams);
@@ -60,43 +75,47 @@ function snakeTeamForPick(overall:number, orderedTeams:LeagueTeam[]) {
   const zeroBased = pickInRound - 1;
   return round % 2 === 1 ? orderedTeams[zeroBased] : orderedTeams[teams - 1 - zeroBased];
 }
+
 function currentRound(overall:number, teams:number) { return Math.ceil(overall / teams); }
 function pickInRound(overall:number, teams:number) { return ((overall - 1) % teams) + 1; }
+
 function defaultTeams(): LeagueTeam[] {
   return Array.from({ length: 12 }, (_, i) => ({ id: i + 1, name: i === 0 ? "My Team" : `Team ${i + 1}`, slot: i + 1 }));
 }
+
 function makePlayer(id:number, name:string, team:string, pos:string[], rank:number): Player {
   const pitcher = pos.includes("SP") || pos.includes("RP");
   if (pitcher) {
     const rp = pos.includes("RP");
     return {
       id: String(id), name, team, pos, rank, drafted:false, myTeam:false,
-      IP: rp ? Math.max(52, 72 - Math.floor(rank / 26)) : Math.max(105, 208 - Math.floor(rank / 3)),
-      W: rp ? 4 : Math.max(6, 16 - Math.floor(rank / 42)),
-      L: rp ? 3 : Math.max(4, 10 - Math.floor(rank / 75)),
-      QS: rp ? 0 : Math.max(0, 22 - Math.floor(rank / 12)),
-      SV: rp ? Math.max(2, 38 - Math.floor(rank / 10)) : 0,
-      K: rp ? Math.max(50, 96 - Math.floor(rank / 8)) : Math.max(95, 245 - Math.floor(rank / 2.3)),
-      BBP: rp ? Math.max(12, 28 - Math.floor(rank / 20)) : Math.max(25, 58 - Math.floor(rank / 15)),
-      ERA: Number((rp ? 2.2 + rank * 0.011 : 2.7 + rank * 0.007).toFixed(2)),
-      WHIP: Number((rp ? 0.92 + rank * 0.0018 : 0.98 + rank * 0.0021).toFixed(2)),
-      KBB: Number((rp ? 5.2 - rank * 0.012 : 6.4 - rank * 0.014).toFixed(2)),
+      IP: rp ? Math.max(55, 72 - Math.floor(rank / 22)) : Math.max(120, 205 - Math.floor(rank / 2.5)),
+      W: rp ? 4 : Math.max(7, 16 - Math.floor(rank / 35)),
+      L: rp ? 3 : Math.max(4, 10 - Math.floor(rank / 60)),
+      QS: rp ? 0 : Math.max(0, 21 - Math.floor(rank / 10)),
+      SV: rp ? Math.max(3, 38 - Math.floor(rank / 8)) : 0,
+      K: rp ? Math.max(55, 96 - Math.floor(rank / 6)) : Math.max(110, 245 - Math.floor(rank / 1.9)),
+      BBP: rp ? Math.max(12, 28 - Math.floor(rank / 18)) : Math.max(28, 58 - Math.floor(rank / 12)),
+      ERA: Number((rp ? 2.2 + rank * 0.01 : 2.7 + rank * 0.006).toFixed(2)),
+      WHIP: Number((rp ? 0.92 + rank * 0.0016 : 0.98 + rank * 0.0019).toFixed(2)),
+      KBB: Number((rp ? 5.2 - rank * 0.012 : 6.4 - rank * 0.015).toFixed(2)),
     };
   }
   return {
     id: String(id), name, team, pos, rank, drafted:false, myTeam:false,
-    H: Math.max(95, 192 - Math.floor(rank / 2.4)),
-    R: Math.max(45, 118 - Math.floor(rank / 3.4)),
-    HR: Math.max(5, 42 - Math.floor(rank / 9)),
-    RBI: Math.max(40, 112 - Math.floor(rank / 3.8)),
-    BB: Math.max(22, 96 - Math.floor(rank / 4.8)),
-    SB: pos.includes("SS") || pos.includes("OF") || pos.includes("2B") ? Math.max(1, 34 - Math.floor(rank / 10)) : Math.max(0, 10 - Math.floor(rank / 22)),
-    AVG: Number((0.315 - rank * 0.00038).toFixed(3)),
-    OBP: Number((0.405 - rank * 0.00048).toFixed(3)),
-    SLG: Number((0.615 - rank * 0.001).toFixed(3)),
-    TB: Math.max(155, 336 - Math.floor(rank * 1.2)),
+    H: Math.max(108, 192 - Math.floor(rank / 2.2)),
+    R: Math.max(52, 118 - Math.floor(rank / 3)),
+    HR: Math.max(7, 42 - Math.floor(rank / 8)),
+    RBI: Math.max(45, 112 - Math.floor(rank / 3.4)),
+    BB: Math.max(24, 96 - Math.floor(rank / 4.2)),
+    SB: pos.includes("SS") || pos.includes("OF") || pos.includes("2B") ? Math.max(2, 32 - Math.floor(rank / 9)) : Math.max(0, 10 - Math.floor(rank / 18)),
+    AVG: Number((0.315 - rank * 0.00035).toFixed(3)),
+    OBP: Number((0.405 - rank * 0.00045).toFixed(3)),
+    SLG: Number((0.615 - rank * 0.0009).toFixed(3)),
+    TB: Math.max(170, 336 - Math.floor(rank * 1.1)),
   };
 }
+
 function seededPlayers(): Player[] {
   const seedList: Array<[string,string,string[]]> = [
     ["Shohei Ohtani (DH)","LAD",["DH"]],["Aaron Judge","NYY",["LF","CF","RF","DH"]],["Bobby Witt Jr.","KC",["SS"]],["Juan Soto","NYM",["LF","RF"]],["Ronald Acuna Jr.","ATL",["RF"]],["Tarik Skubal","DET",["SP"]],["Paul Skenes","PIT",["SP"]],["Elly De La Cruz","CIN",["SS"]],["Julio Rodriguez","SEA",["CF"]],["Kyle Tucker","CHC",["RF"]],
@@ -118,7 +137,9 @@ function seededPlayers(): Player[] {
     ["Zac Gallen","ARI",["SP"]],["Sandy Alcantara","MIA",["SP"]],["Justin Steele","CHC",["SP"]],["Luis Severino","ATH",["SP"]],["Kodai Senga","NYM",["SP"]],["Freddy Peralta","MIL",["SP"]],["Roki Sasaki","LAD",["SP"]],["Brandon Pfaadt","ARI",["SP"]],["Jacob deGrom","TEX",["SP"]],["Reynaldo Lopez","ATL",["SP"]],
     ["Clay Holmes","NYM",["RP"]],["Justin Martinez","ARI",["RP"]],["A.J. Puk","ARI",["RP"]],["Alexis Diaz","CIN",["RP"]],["Kyle Finnegan","WSH",["RP"]],["Carlos Estevez","KC",["RP"]],["Jason Adam","SD",["RP"]],["Pete Fairbanks","TB",["RP"]],["Kenley Jansen","LAA",["RP"]],["Trevor Megill","MIL",["RP"]],
   ];
+
   const players = seedList.map((row, idx) => makePlayer(idx + 1, row[0], row[1], row[2], idx + 1));
+
   let nextId = players.length + 1;
   while (players.length < 340) {
     const n = players.length + 1;
@@ -154,6 +175,7 @@ function teamSummary(players:Player[]) {
   });
   return totals;
 }
+
 function computeProfiles(players:Player[]) {
   const hitters = players.filter((p)=>!isPitcher(p));
   const pitchers = players.filter((p)=>isPitcher(p));
@@ -161,16 +183,19 @@ function computeProfiles(players:Player[]) {
   const pitcherProfile = Object.fromEntries(pitchingCats.map((cat) => [cat, { mean: mean(pitchers.map((p)=>Number((p as any)[cat] || 0))), std: std(pitchers.map((p)=>Number((p as any)[cat] || 0))) }]));
   return { hitterProfile, pitcherProfile };
 }
+
 function zScore(value:number, profile:{mean:number,std:number}, inverse=false) {
   const z = (value - profile.mean) / (profile.std || 1);
   return inverse ? -z : z;
 }
+
 function positionCounts(players:Player[]) {
   const counts:Record<string, number> = {};
   Object.keys(rosterTemplate).forEach((k)=> counts[k]=0);
   players.filter((p)=>p.myTeam).forEach((p)=> p.pos.forEach((pos)=> { if (counts[pos] !== undefined) counts[pos] += 1; }));
   return counts;
 }
+
 function buildNeeds(players:Player[]) {
   const mine = players.filter((p)=>p.myTeam);
   const hitters = mine.filter((p)=>!isPitcher(p));
@@ -189,6 +214,7 @@ function buildNeeds(players:Player[]) {
     counts,
   };
 }
+
 function scorePlayer(player:Player, profiles:any, needs:any) {
   let score = 0;
   if (isPitcher(player)) pitchingCats.forEach((cat) => { score += zScore(Number((player as any)[cat] || 0), profiles.pitcherProfile[cat], inverseCats.has(cat)); });
@@ -204,6 +230,7 @@ function scorePlayer(player:Player, profiles:any, needs:any) {
   if (player.pos.some((pos)=>rosterTemplate[pos] && needs.counts[pos] < rosterTemplate[pos])) score += 0.35;
   return score;
 }
+
 function recommendationText(best:Player | null, needs:any) {
   if (!best) return ["No recommendation available."];
   const reasons:string[] = [];
@@ -217,6 +244,7 @@ function recommendationText(best:Player | null, needs:any) {
   if (!reasons.length) reasons.push("You are balanced enough to take the best value on the board.");
   return reasons;
 }
+
 function badgeStyle() { return "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium"; }
 function buttonStyle(primary=false) { return primary ? "rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800" : "rounded-xl border px-3 py-2 text-sm font-medium hover:bg-slate-50"; }
 function cardStyle() { return "rounded-2xl border bg-white p-4 shadow-sm"; }
@@ -225,6 +253,8 @@ export default function Page() {
   const [players, setPlayers] = useState<Player[]>(seededPlayers());
   const [leagueTeams, setLeagueTeams] = useState<LeagueTeam[]>(defaultTeams());
   const [query, setQuery] = useState("");
+  const [sortMode, setSortMode] = useState<"rank" | "ai">("rank");
+  const [assistantMode, setAssistantMode] = useState<"balanced" | "aggressive">("balanced");
   const [csvText, setCsvText] = useState("");
   const [history, setHistory] = useState<DraftPick[]>([]);
   const [showOnlyMine, setShowOnlyMine] = useState(false);
@@ -241,11 +271,61 @@ export default function Page() {
   const needs = useMemo(() => buildNeeds(players), [players]);
   const totals = useMemo(() => teamSummary(players), [players]);
   const counts = needs.counts;
-  const ranked = useMemo(() => [...players].map((p) => ({ ...p, aiScore: scorePlayer(p, profiles, needs), tier: assignTier(p.rank) })).sort((a:any, b:any) => a.drafted !== b.drafted ? (a.drafted ? 1 : -1) : b.aiScore - a.aiScore), [players, profiles, needs]);
-  const filtered = useMemo(() => ranked.filter((p:any) => (!showOnlyMine || p.myTeam) && (!query || `${p.name} ${p.team} ${p.pos.join("/")}`.toLowerCase().includes(query.toLowerCase()))), [ranked, query, showOnlyMine]);
+
+  const ranked = useMemo(() => {
+    const enriched = [...players].map((p) => ({ ...p, aiScore: scorePlayer(p, profiles, needs), tier: assignTier(p.rank) }));
+    return enriched.sort((a:any, b:any) => {
+      if (a.drafted !== b.drafted) return a.drafted ? 1 : -1;
+      if (sortMode === "rank") return a.rank - b.rank;
+      return b.aiScore - a.aiScore;
+    });
+  }, [players, profiles, needs, sortMode]);
+
+  const filtered = useMemo(() => ranked.filter((p:any) => {
+    if (showOnlyMine && !p.myTeam) return false;
+    if (query && !`${p.name} ${p.team} ${p.pos.join("/")}`.toLowerCase().includes(query.toLowerCase())) return false;
+    return true;
+  }), [ranked, query, showOnlyMine]);
+
   const available = ranked.filter((p:any)=>!p.drafted);
   const bestPick = available[0] || null;
   const reasons = recommendationText(bestPick, needs);
+
+  const bestHitter = available.find((p:any) => !isPitcher(p)) || null;
+  const bestSP = available.find((p:any) => p.pos.includes("SP")) || null;
+  const bestRP = available.find((p:any) => p.pos.includes("RP")) || null;
+
+  const mySlot = orderedTeams.find(t => t.id === 1)?.slot || 1;
+  const currentClockSlot = clockTeam?.slot || 1;
+  const picksUntilMyNextTurn = (() => {
+    if (history.length === 0) return Math.abs(mySlot - currentClockSlot);
+    let count = 0;
+    let probe = nextPick;
+    while (count < 60) {
+      const t = snakeTeamForPick(probe, orderedTeams);
+      if (t.id === 1) return count;
+      probe += 1;
+      count += 1;
+    }
+    return 0;
+  })();
+
+  const likelyGoneNextTurn = available
+    .filter((p:any) => p.rank <= (bestPick?.rank || 999) + picksUntilMyNextTurn + 6)
+    .slice(0, Math.max(3, Math.min(8, picksUntilMyNextTurn + 2)));
+
+  const nextLevelRecommendation = (() => {
+    if (!bestPick) return "No recommendation available.";
+    if (assistantMode === "aggressive") {
+      if (bestSP && needs.pitchingNeed >= needs.hittingNeed) return `Attack pitching now: ${bestSP.name}`;
+      if (bestHitter && needs.needSB) return `Push category leverage now: ${bestHitter.name}`;
+    }
+    if (needs.needSaves && bestRP) return `You can wait on hitters here and stabilize saves with ${bestRP.name}.`;
+    if (needs.pitchingNeed > needs.hittingNeed && bestSP) return `Best structural move: ${bestSP.name} to support your heavy-pitching format.`;
+    if (bestHitter) return `Best overall bat right now: ${bestHitter.name}.`;
+    return `Best overall value: ${bestPick.name}.`;
+  })();
+
   const tierBoard = useMemo(() => {
     const groups: Record<string, any[]> = { C: [], "1B": [], "2B": [], SS: [], "3B": [], OF: [], DH: [], SP: [], RP: [] };
     available.forEach((p:any) => {
@@ -256,17 +336,36 @@ export default function Page() {
     return groups;
   }, [available]);
 
-  function updateTeamName(id:number, value:string) { setLeagueTeams(prev => prev.map(t => t.id === id ? { ...t, name: value } : t)); }
-  function updateTeamSlot(id:number, value:number) { const safe = Math.max(1, Math.min(12, value || 1)); setLeagueTeams(prev => prev.map(t => t.id === id ? { ...t, slot: safe } : t)); }
+  function updateTeamName(id:number, value:string) {
+    setLeagueTeams(prev => prev.map(t => t.id === id ? { ...t, name: value } : t));
+  }
+  function updateTeamSlot(id:number, value:number) {
+    const safe = Math.max(1, Math.min(12, value || 1));
+    setLeagueTeams(prev => prev.map(t => t.id === id ? { ...t, slot: safe } : t));
+  }
+
   function markPlayer(id:string, mine=false) {
     const draftedTeam = mine ? orderedTeams.find(t => t.id === 1)! : clockTeam;
     const player = players.find(p => p.id === id);
     if (!player || !draftedTeam) return;
-    const pick: DraftPick = { overall: nextPick, round: nextRound, pickInRound: nextPickInRound, teamId: draftedTeam.id, teamName: draftedTeam.name, playerId: id, playerName: player.name, playerPos: displayPos(player), mine };
-    setPlayers(prev => prev.map(p => p.id === id ? { ...p, drafted:true, myTeam:mine } : p));
+
+    const pick: DraftPick = {
+      overall: nextPick,
+      round: nextRound,
+      pickInRound: nextPickInRound,
+      teamId: draftedTeam.id,
+      teamName: draftedTeam.name,
+      playerId: id,
+      playerName: player.name,
+      playerPos: displayPos(player),
+      mine,
+    };
+
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, drafted:true, myTeam: mine } : p));
     setHistory(prev => [...prev, pick]);
     setOverrideTeamId("");
   }
+
   function undoLastPick() {
     const last = history[history.length - 1];
     if (!last) return;
@@ -274,7 +373,13 @@ export default function Page() {
     setHistory(prev => prev.slice(0, -1));
     setOverrideTeamId("");
   }
-  function resetDraft() { setPlayers(prev => prev.map(p => ({ ...p, drafted:false, myTeam:false }))); setHistory([]); setOverrideTeamId(""); }
+
+  function resetDraft() {
+    setPlayers(prev => prev.map(p => ({ ...p, drafted:false, myTeam:false })));
+    setHistory([]);
+    setOverrideTeamId("");
+  }
+
   function parseCsv(text:string): Player[] {
     const lines = text.trim().split(/\r?\n/).filter(Boolean);
     if (!lines.length) return [];
@@ -294,12 +399,16 @@ export default function Page() {
       return obj as Player;
     });
   }
+
   function importCsv() {
     const parsed = parseCsv(csvText);
     if (!parsed.length) return;
     setPlayers(parsed.map((p, i) => ({ ...p, id: p.id || `csv-${i+1}`, drafted:false, myTeam:false })));
-    setHistory([]); setShowOnlyMine(false); setOverrideTeamId("");
+    setHistory([]);
+    setShowOnlyMine(false);
+    setOverrideTeamId("");
   }
+
   function downloadTemplate() {
     const header = ["name","team","pos","rank","H","R","HR","RBI","BB","SB","AVG","OBP","SLG","TB","IP","W","L","QS","SV","K","BBP","ERA","WHIP","KBB"];
     const exampleRows = [
@@ -311,7 +420,10 @@ export default function Page() {
     const blob = new Blob([csv], { type:"text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url; link.download = "draft_assistant_projection_template.csv"; link.click(); URL.revokeObjectURL(url);
+    link.href = url;
+    link.download = "draft_assistant_projection_template.csv";
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -320,7 +432,7 @@ export default function Page() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Fantasy Baseball AI Draft Assistant</h1>
-            <p className="text-sm text-slate-600">340-player pool, editable league teams, full draft history, round tracking, and larger tier board.</p>
+            <p className="text-sm text-slate-600">Expanded player pool, editable league teams, full draft history, round tracking, larger tier board, and live sorting by rank or AI score.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className={buttonStyle(false)} onClick={downloadTemplate}>CSV Template</button>
@@ -335,12 +447,22 @@ export default function Page() {
             <div className="space-y-4">
               <div className="rounded-2xl border bg-white p-3">
                 <div className="grid grid-cols-3 gap-2 text-sm">
-                  <div><div className="text-xs uppercase text-slate-500">Overall</div><div className="text-2xl font-semibold">{nextPick}</div></div>
-                  <div><div className="text-xs uppercase text-slate-500">Round</div><div className="text-2xl font-semibold">{nextRound}</div></div>
-                  <div><div className="text-xs uppercase text-slate-500">Pick</div><div className="text-2xl font-semibold">{nextPickInRound}</div></div>
+                  <div>
+                    <div className="text-xs uppercase text-slate-500">Overall</div>
+                    <div className="text-2xl font-semibold">{nextPick}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase text-slate-500">Round</div>
+                    <div className="text-2xl font-semibold">{nextRound}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase text-slate-500">Pick</div>
+                    <div className="text-2xl font-semibold">{nextPickInRound}</div>
+                  </div>
                 </div>
                 <div className="mt-3 text-sm text-slate-700">On the clock: <span className="font-semibold">{clockTeam?.name}</span></div>
               </div>
+
               <div className="rounded-2xl border bg-white p-3">
                 <div className="mb-2 text-xs uppercase text-slate-500">Fix Mistakes / Override Team</div>
                 <select className="w-full rounded-xl border px-3 py-2 text-sm" value={overrideTeamId} onChange={(e)=>setOverrideTeamId(e.target.value)}>
@@ -348,30 +470,66 @@ export default function Page() {
                   {orderedTeams.map(team => <option key={team.id} value={team.id}>{team.name} (slot {team.slot})</option>)}
                 </select>
               </div>
+
               <div className="rounded-2xl border bg-white p-3">
-                <div className="mb-1 text-xs uppercase text-slate-500">Best Pick Right Now</div>
-                {bestPick ? <>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <div className="text-xs uppercase text-slate-500">Best Pick Right Now</div>
+                  <select className="rounded-xl border px-2 py-1 text-xs" value={assistantMode} onChange={(e)=>setAssistantMode(e.target.value as "balanced" | "aggressive")}>
+                    <option value="balanced">Balanced AI</option>
+                    <option value="aggressive">Aggressive AI</option>
+                  </select>
+                </div>
+                {bestPick ? (
+                  <>
                     <div className="text-lg font-semibold">{bestPick.name}</div>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {bestPick.pos.map((p:string) => <span className={badgeStyle()} key={p}>{p}</span>)}
                       <span className={badgeStyle()}>{bestPick.team}</span>
-                      <span className={`${badgeStyle()} ${tierColors[bestPick.tier]}`}>{bestPick.tier}</span>
+                      <span className={`${badgeStyle()} ${tierColors[(bestPick as any).tier]}`}>{(bestPick as any).tier}</span>
                     </div>
-                    <div className="mt-2 text-sm text-slate-700">AI Score: {bestPick.aiScore.toFixed(2)}</div>
-                  </> : <div className="text-sm text-slate-500">No players available.</div>}
+                    <div className="mt-2 text-sm text-slate-700">AI Score: {(bestPick as any).aiScore.toFixed(2)}</div>
+                    <div className="mt-3 rounded-xl border bg-slate-50 p-2 text-sm font-medium text-slate-800">{nextLevelRecommendation}</div>
+                  </>
+                ) : <div className="text-sm text-slate-500">No players available.</div>}
               </div>
+
+              <div className="rounded-2xl border bg-white p-3">
+                <div className="mb-2 text-xs uppercase text-slate-500">Best By Role</div>
+                <div className="space-y-2 text-sm">
+                  <div><span className="font-semibold">Best Hitter:</span> {bestHitter ? bestHitter.name : "—"}</div>
+                  <div><span className="font-semibold">Best SP:</span> {bestSP ? bestSP.name : "—"}</div>
+                  <div><span className="font-semibold">Best RP:</span> {bestRP ? bestRP.name : "—"}</div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border bg-white p-3">
+                <div className="mb-2 text-xs uppercase text-slate-500">Likely Gone Before Your Next Turn</div>
+                <div className="text-xs text-slate-500">Estimated picks until your next turn: {picksUntilMyNextTurn}</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {likelyGoneNextTurn.map((p:any) => (
+                    <span key={p.id} className={`${badgeStyle()} ${tierColors[p.tier]}`}>{p.name}</span>
+                  ))}
+                </div>
+              </div>
+
               <div className="rounded-2xl border bg-white p-3">
                 <div className="mb-2 text-xs uppercase text-slate-500">Recommendation Reasons</div>
                 <ul className="space-y-2 text-sm text-slate-700">{reasons.map((r:string) => <li key={r}>• {r}</li>)}</ul>
               </div>
+
               <div className="rounded-2xl border bg-white p-3">
                 <div className="mb-2 text-xs uppercase text-slate-500">Roster Counts</div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>SP: {counts.SP}/{rosterTemplate.SP}</div><div>RP: {counts.RP}/{rosterTemplate.RP}</div>
-                  <div>C: {counts.C}/{rosterTemplate.C}</div><div>1B: {counts["1B"]}/{rosterTemplate["1B"]}</div>
-                  <div>2B: {counts["2B"]}/{rosterTemplate["2B"]}</div><div>SS: {counts.SS}/{rosterTemplate.SS}</div>
-                  <div>3B: {counts["3B"]}/{rosterTemplate["3B"]}</div><div>LF: {counts.LF}/{rosterTemplate.LF}</div>
-                  <div>CF: {counts.CF}/{rosterTemplate.CF}</div><div>RF: {counts.RF}/{rosterTemplate.RF}</div>
+                  <div>SP: {counts.SP}/{rosterTemplate.SP}</div>
+                  <div>RP: {counts.RP}/{rosterTemplate.RP}</div>
+                  <div>C: {counts.C}/{rosterTemplate.C}</div>
+                  <div>1B: {counts["1B"]}/{rosterTemplate["1B"]}</div>
+                  <div>2B: {counts["2B"]}/{rosterTemplate["2B"]}</div>
+                  <div>SS: {counts.SS}/{rosterTemplate.SS}</div>
+                  <div>3B: {counts["3B"]}/{rosterTemplate["3B"]}</div>
+                  <div>LF: {counts.LF}/{rosterTemplate.LF}</div>
+                  <div>CF: {counts.CF}/{rosterTemplate.CF}</div>
+                  <div>RF: {counts.RF}/{rosterTemplate.RF}</div>
                 </div>
               </div>
             </div>
@@ -385,88 +543,124 @@ export default function Page() {
                 <button className={activeTab === "board" ? buttonStyle(true) : buttonStyle(false)} onClick={() => setActiveTab("board")}>Draft Board</button>
               </div>
               {activeTab === "live" && (
-                <div className="flex w-full gap-2 md:max-w-sm">
+                <div className="flex w-full gap-2 md:max-w-xl">
                   <input className="w-full rounded-xl border px-3 py-2 text-sm" placeholder="Search players" value={query} onChange={(e)=>setQuery(e.target.value)} />
+                  <select className="rounded-xl border px-3 py-2 text-sm" value={sortMode} onChange={(e)=>setSortMode(e.target.value as "rank" | "ai")}>
+                    <option value="rank">Sort: Rank</option>
+                    <option value="ai">Sort: AI Score</option>
+                  </select>
                   <button className={showOnlyMine ? buttonStyle(true) : buttonStyle(false)} onClick={()=>setShowOnlyMine((v)=>!v)}>Mine</button>
                 </div>
               )}
             </div>
 
-            {activeTab === "live" && <div className="max-h-[760px] space-y-2 overflow-y-auto pr-1">
-              {filtered.map((p:any, idx:number) => (
-                <div key={p.id} className={`rounded-2xl border p-3 ${!p.drafted && idx === 0 && !showOnlyMine ? "border-slate-900 bg-slate-50" : "bg-white"} ${p.drafted ? "opacity-60" : ""}`}>
-                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-500">#{p.rank || idx + 1}</span>
-                        <span className="text-base font-semibold">{p.name}</span>
-                        <span className={badgeStyle()}>{p.team}</span>
-                        {p.pos.map((pos:string)=><span className={badgeStyle()} key={pos}>{pos}</span>)}
-                        <span className={`${badgeStyle()} ${tierColors[p.tier]}`}>{p.tier}</span>
-                        {p.myTeam && <span className={badgeStyle()}>My Team</span>}
-                        {p.drafted && !p.myTeam && <span className={`${badgeStyle()} border-red-200 bg-red-50 text-red-700`}>Taken</span>}
-                      </div>
-                      <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 md:grid-cols-5">
-                        {isPitcher(p) ? <><div>IP: {p.IP}</div><div>QS: {p.QS}</div><div>K: {p.K}</div><div>ERA: {p.ERA}</div><div>K/BB: {p.KBB}</div></> : <><div>R: {p.R}</div><div>HR: {p.HR}</div><div>RBI: {p.RBI}</div><div>SB: {p.SB}</div><div>OBP: {p.OBP?.toFixed(3)}</div></>}
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      {!p.drafted ? <>
-                        <button className={buttonStyle(false)} onClick={()=>markPlayer(p.id, false)}>Taken</button>
-                        <button className={buttonStyle(true)} onClick={()=>markPlayer(p.id, true)}>My Pick</button>
-                      </> : null}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>}
-
-            {activeTab === "tiers" && <div className="max-h-[760px] overflow-y-auto pr-1">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {positionsForTierBoard.map((position) => (
-                  <div key={position} className="rounded-2xl border bg-slate-50 p-3">
-                    <div className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">{position}</div>
-                    <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
-                      {tierBoard[position].map((p:any) => (
-                        <div key={p.id} className={`rounded-xl border p-2 ${tierColors[p.tier]}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div><div className="text-sm font-semibold">{p.name}</div><div className="text-xs opacity-80">#{p.rank} • {p.team}</div></div>
-                            <span className="rounded-full border px-2 py-0.5 text-[11px] font-medium">{p.tier}</span>
-                          </div>
+            {activeTab === "live" && (
+              <div className="max-h-[760px] space-y-2 overflow-y-auto pr-1">
+                {filtered.map((p:any, idx:number) => (
+                  <div key={p.id} className={`rounded-2xl border p-3 ${!p.drafted && idx === 0 && !showOnlyMine ? "border-slate-900 bg-slate-50" : "bg-white"} ${p.drafted ? "opacity-60" : ""}`}>
+                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-slate-500">#{p.rank || idx + 1}</span>
+                          <span className="text-base font-semibold">{p.name}</span>
+                          <span className={badgeStyle()}>{p.team}</span>
+                          {p.pos.map((pos:string)=><span className={badgeStyle()} key={pos}>{pos}</span>)}
+                          <span className={`${badgeStyle()} ${tierColors[p.tier]}`}>{p.tier}</span>
+                          {p.myTeam && <span className={badgeStyle()}>My Team</span>}
+                          {p.drafted && !p.myTeam && <span className={`${badgeStyle()} border-red-200 bg-red-50 text-red-700`}>Taken</span>}
                         </div>
-                      ))}
+                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600 md:grid-cols-5">
+                          {isPitcher(p) ? (
+                            <><div>IP: {p.IP}</div><div>QS: {p.QS}</div><div>K: {p.K}</div><div>ERA: {p.ERA}</div><div>K/BB: {p.KBB}</div></>
+                          ) : (
+                            <><div>R: {p.R}</div><div>HR: {p.HR}</div><div>RBI: {p.RBI}</div><div>SB: {p.SB}</div><div>OBP: {p.OBP?.toFixed(3)}</div></>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        {!p.drafted ? (
+                          <>
+                            <button className={buttonStyle(false)} onClick={()=>markPlayer(p.id, false)}>Taken</button>
+                            <button className={buttonStyle(true)} onClick={()=>markPlayer(p.id, true)}>My Pick</button>
+                          </>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>}
+            )}
 
-            {activeTab === "board" && <div className="space-y-4">
-              <div className="rounded-2xl border bg-white p-3">
-                <div className="mb-3 text-sm font-semibold text-slate-700">League Teams</div>
-                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                  {leagueTeams.map(team => (
-                    <div key={team.id} className="grid grid-cols-[72px_1fr] gap-2">
-                      <input type="number" min={1} max={12} value={team.slot} onChange={(e)=>updateTeamSlot(team.id, Number(e.target.value))} className="rounded-xl border px-2 py-2 text-sm" />
-                      <input value={team.name} onChange={(e)=>updateTeamName(team.id, e.target.value)} className="rounded-xl border px-3 py-2 text-sm" />
+            {activeTab === "tiers" && (
+              <div className="max-h-[760px] overflow-y-auto pr-1">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                  {positionsForTierBoard.map((position) => (
+                    <div key={position} className="rounded-2xl border bg-slate-50 p-3">
+                      <div className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-600">{position}</div>
+                      <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+                        {tierBoard[position].map((p:any) => (
+                          <div key={p.id} className={`rounded-xl border p-2 ${tierColors[p.tier]}`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="text-sm font-semibold">{p.name}</div>
+                                <div className="text-xs opacity-80">#{p.rank} • {p.team}</div>
+                              </div>
+                              <span className="rounded-full border px-2 py-0.5 text-[11px] font-medium">{p.tier}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-              <div className="rounded-2xl border bg-white p-3">
-                <div className="mb-3 text-sm font-semibold text-slate-700">Draft History</div>
-                <div className="max-h-[500px] overflow-y-auto">
-                  <table className="w-full border-collapse text-sm">
-                    <thead><tr className="border-b text-left text-slate-500"><th className="py-2">Ovr</th><th className="py-2">Rnd</th><th className="py-2">Pick</th><th className="py-2">Team</th><th className="py-2">Player</th><th className="py-2">Pos</th></tr></thead>
-                    <tbody>
-                      {history.map(pick => (
-                        <tr key={pick.overall} className="border-b last:border-b-0"><td className="py-2">{pick.overall}</td><td className="py-2">{pick.round}</td><td className="py-2">{pick.pickInRound}</td><td className="py-2">{pick.teamName}</td><td className="py-2">{pick.playerName}</td><td className="py-2">{pick.playerPos}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
+            )}
+
+            {activeTab === "board" && (
+              <div className="space-y-4">
+                <div className="rounded-2xl border bg-white p-3">
+                  <div className="mb-3 text-sm font-semibold text-slate-700">League Teams</div>
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {leagueTeams.map(team => (
+                      <div key={team.id} className="grid grid-cols-[72px_1fr] gap-2">
+                        <input type="number" min={1} max={12} value={team.slot} onChange={(e)=>updateTeamSlot(team.id, Number(e.target.value))} className="rounded-xl border px-2 py-2 text-sm" />
+                        <input value={team.name} onChange={(e)=>updateTeamName(team.id, e.target.value)} className="rounded-xl border px-3 py-2 text-sm" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border bg-white p-3">
+                  <div className="mb-3 text-sm font-semibold text-slate-700">Draft History</div>
+                  <div className="max-h-[500px] overflow-y-auto">
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b text-left text-slate-500">
+                          <th className="py-2">Ovr</th>
+                          <th className="py-2">Rnd</th>
+                          <th className="py-2">Pick</th>
+                          <th className="py-2">Team</th>
+                          <th className="py-2">Player</th>
+                          <th className="py-2">Pos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.map(pick => (
+                          <tr key={pick.overall} className="border-b last:border-b-0">
+                            <td className="py-2">{pick.overall}</td>
+                            <td className="py-2">{pick.round}</td>
+                            <td className="py-2">{pick.pickInRound}</td>
+                            <td className="py-2">{pick.teamName}</td>
+                            <td className="py-2">{pick.playerName}</td>
+                            <td className="py-2">{pick.playerPos}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
-            </div>}
+            )}
           </section>
 
           <section className={`${cardStyle()} xl:col-span-3`}>
@@ -483,18 +677,30 @@ export default function Page() {
                 </div>
               ))}
             </div>
+
             <div className="mb-4 grid grid-cols-2 gap-2 text-sm">
-              <div className="rounded-xl border p-3">H: {totals.H}</div><div className="rounded-xl border p-3">R: {totals.R}</div>
-              <div className="rounded-xl border p-3">HR: {totals.HR}</div><div className="rounded-xl border p-3">RBI: {totals.RBI}</div>
-              <div className="rounded-xl border p-3">BB: {totals.BB}</div><div className="rounded-xl border p-3">SB: {totals.SB}</div>
-              <div className="rounded-xl border p-3">AVG: {totals.AVG ? totals.AVG.toFixed(3) : "0.000"}</div><div className="rounded-xl border p-3">OBP: {totals.OBP ? totals.OBP.toFixed(3) : "0.000"}</div>
-              <div className="rounded-xl border p-3">SLG: {totals.SLG ? totals.SLG.toFixed(3) : "0.000"}</div><div className="rounded-xl border p-3">TB: {totals.TB}</div>
-              <div className="rounded-xl border p-3">IP: {totals.IP}</div><div className="rounded-xl border p-3">W: {totals.W}</div>
-              <div className="rounded-xl border p-3">L: {totals.L}</div><div className="rounded-xl border p-3">QS: {totals.QS}</div>
-              <div className="rounded-xl border p-3">SV: {totals.SV}</div><div className="rounded-xl border p-3">K: {totals.K}</div>
-              <div className="rounded-xl border p-3">BBP: {totals.BBP}</div><div className="rounded-xl border p-3">ERA: {totals.ERA ? totals.ERA.toFixed(2) : "0.00"}</div>
-              <div className="rounded-xl border p-3">WHIP: {totals.WHIP ? totals.WHIP.toFixed(2) : "0.00"}</div><div className="rounded-xl border p-3">K/BB: {totals.KBB ? totals.KBB.toFixed(2) : "0.00"}</div>
+              <div className="rounded-xl border p-3">H: {totals.H}</div>
+              <div className="rounded-xl border p-3">R: {totals.R}</div>
+              <div className="rounded-xl border p-3">HR: {totals.HR}</div>
+              <div className="rounded-xl border p-3">RBI: {totals.RBI}</div>
+              <div className="rounded-xl border p-3">BB: {totals.BB}</div>
+              <div className="rounded-xl border p-3">SB: {totals.SB}</div>
+              <div className="rounded-xl border p-3">AVG: {totals.AVG ? totals.AVG.toFixed(3) : "0.000"}</div>
+              <div className="rounded-xl border p-3">OBP: {totals.OBP ? totals.OBP.toFixed(3) : "0.000"}</div>
+              <div className="rounded-xl border p-3">SLG: {totals.SLG ? totals.SLG.toFixed(3) : "0.000"}</div>
+              <div className="rounded-xl border p-3">TB: {totals.TB}</div>
+              <div className="rounded-xl border p-3">IP: {totals.IP}</div>
+              <div className="rounded-xl border p-3">W: {totals.W}</div>
+              <div className="rounded-xl border p-3">L: {totals.L}</div>
+              <div className="rounded-xl border p-3">QS: {totals.QS}</div>
+              <div className="rounded-xl border p-3">SV: {totals.SV}</div>
+              <div className="rounded-xl border p-3">K: {totals.K}</div>
+              <div className="rounded-xl border p-3">BBP: {totals.BBP}</div>
+              <div className="rounded-xl border p-3">ERA: {totals.ERA ? totals.ERA.toFixed(2) : "0.00"}</div>
+              <div className="rounded-xl border p-3">WHIP: {totals.WHIP ? totals.WHIP.toFixed(2) : "0.00"}</div>
+              <div className="rounded-xl border p-3">K/BB: {totals.KBB ? totals.KBB.toFixed(2) : "0.00"}</div>
             </div>
+
             <div className="space-y-3">
               <div className="text-sm text-slate-600">Paste your projection CSV below if you want to replace the seeded player pool.</div>
               <textarea rows={12} className="w-full rounded-xl border p-3 text-sm" placeholder="Paste CSV here" value={csvText} onChange={(e)=>setCsvText(e.target.value)} />
