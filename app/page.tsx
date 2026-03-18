@@ -80,34 +80,104 @@ function tierFromPosRank(pos:string, posRank:number) {
 }
 function displayPos(p:Player) { return p.pos.join("/"); }
 
+function nameSeed(name:string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 100000;
+  return h / 100000;
+}
+function clamp(n:number, lo:number, hi:number) { return Math.max(lo, Math.min(hi, n)); }
+
+const hitterOverrides: Record<string, Partial<Player>> = {
+  "Aaron Judge": { H: 162, R: 121, HR: 48, RBI: 122, BB: 112, SB: 10, AVG: 0.296, OBP: 0.412, SLG: 0.628, TB: 344 },
+  "Shohei Ohtani (Batter)": { H: 168, R: 122, HR: 44, RBI: 112, BB: 90, SB: 18, AVG: 0.298, OBP: 0.392, SLG: 0.603, TB: 339 },
+  "Juan Soto": { H: 158, R: 116, HR: 36, RBI: 104, BB: 122, SB: 8, AVG: 0.292, OBP: 0.425, SLG: 0.565, TB: 305 },
+  "Ronald Acuna Jr.": { H: 166, R: 110, HR: 32, RBI: 92, BB: 78, SB: 29, AVG: 0.290, OBP: 0.384, SLG: 0.548, TB: 313 },
+  "Bobby Witt Jr.": { H: 183, R: 111, HR: 30, RBI: 97, BB: 55, SB: 34, AVG: 0.298, OBP: 0.355, SLG: 0.531, TB: 325 },
+  "Jose Ramirez": { H: 165, R: 96, HR: 34, RBI: 107, BB: 73, SB: 25, AVG: 0.282, OBP: 0.357, SLG: 0.531, TB: 311 },
+  "Kyle Tucker": { H: 164, R: 102, HR: 31, RBI: 99, BB: 75, SB: 19, AVG: 0.286, OBP: 0.372, SLG: 0.531, TB: 305 },
+  "Julio Rodriguez": { H: 174, R: 103, HR: 28, RBI: 96, BB: 60, SB: 27, AVG: 0.284, OBP: 0.344, SLG: 0.508, TB: 312 },
+  "Corey Seager": { H: 151, R: 90, HR: 31, RBI: 98, BB: 54, SB: 2, AVG: 0.296, OBP: 0.357, SLG: 0.542, TB: 281 },
+  "Yordan Alvarez": { H: 149, R: 92, HR: 37, RBI: 110, BB: 82, SB: 1, AVG: 0.294, OBP: 0.388, SLG: 0.575, TB: 292 },
+  "Bryce Harper": { H: 153, R: 94, HR: 30, RBI: 98, BB: 90, SB: 8, AVG: 0.287, OBP: 0.390, SLG: 0.528, TB: 282 },
+  "Matt Olson": { H: 145, R: 92, HR: 37, RBI: 110, BB: 79, SB: 1, AVG: 0.264, OBP: 0.353, SLG: 0.540, TB: 300 },
+  "Vladimir Guerrero Jr.": { H: 176, R: 99, HR: 33, RBI: 107, BB: 75, SB: 4, AVG: 0.305, OBP: 0.381, SLG: 0.549, TB: 316 },
+  "Mookie Betts": { H: 158, R: 104, HR: 24, RBI: 78, BB: 81, SB: 15, AVG: 0.283, OBP: 0.371, SLG: 0.501, TB: 281 },
+  "Trea Turner": { H: 171, R: 100, HR: 20, RBI: 74, BB: 46, SB: 28, AVG: 0.291, OBP: 0.343, SLG: 0.458, TB: 268 },
+  "Francisco Lindor": { H: 158, R: 95, HR: 27, RBI: 86, BB: 62, SB: 22, AVG: 0.273, OBP: 0.344, SLG: 0.480, TB: 278 },
+  "Pete Alonso": { H: 146, R: 87, HR: 40, RBI: 114, BB: 74, SB: 1, AVG: 0.262, OBP: 0.347, SLG: 0.539, TB: 301 },
+  "Cal Raleigh": { H: 128, R: 80, HR: 33, RBI: 90, BB: 62, SB: 1, AVG: 0.243, OBP: 0.323, SLG: 0.497, TB: 259 },
+  "William Contreras": { H: 158, R: 83, HR: 20, RBI: 81, BB: 57, SB: 6, AVG: 0.285, OBP: 0.355, SLG: 0.451, TB: 252 },
+};
+
+const pitcherOverrides: Record<string, Partial<Player>> = {
+  "Tarik Skubal": { IP: 193, W: 15, L: 7, QS: 20, SV: 0, K: 237, BBP: 39, ERA: 2.95, WHIP: 1.03, KBB: 6.08 },
+  "Paul Skenes": { IP: 188, W: 13, L: 7, QS: 18, SV: 0, K: 248, BBP: 49, ERA: 3.01, WHIP: 1.07, KBB: 5.06 },
+  "Zack Wheeler": { IP: 198, W: 15, L: 7, QS: 21, SV: 0, K: 224, BBP: 43, ERA: 3.10, WHIP: 1.05, KBB: 5.21 },
+  "George Kirby": { IP: 191, W: 13, L: 8, QS: 18, SV: 0, K: 198, BBP: 24, ERA: 3.30, WHIP: 1.04, KBB: 8.25 },
+  "Logan Webb": { IP: 201, W: 13, L: 10, QS: 21, SV: 0, K: 196, BBP: 43, ERA: 3.37, WHIP: 1.13, KBB: 4.56 },
+  "Josh Hader": { IP: 62, W: 4, L: 3, QS: 0, SV: 35, K: 93, BBP: 25, ERA: 2.74, WHIP: 1.03, KBB: 3.72 },
+  "Emmanuel Clase": { IP: 67, W: 4, L: 3, QS: 0, SV: 39, K: 70, BBP: 15, ERA: 2.36, WHIP: 0.95, KBB: 4.67 },
+};
+
 function addProjectedStats(base:Player): Player {
   const p = { ...base };
+  const seed = nameSeed(p.name);
+  const bucket = posBucket(p);
+  const posRank = p.posRanks[bucket] ?? 999;
+
   if (isPitcher(p)) {
+    const override = pitcherOverrides[p.name];
+    if (override) return { ...p, ...override } as Player;
+
     const rp = p.pos.includes("RP") && !p.pos.includes("SP");
-    p.IP = rp ? Math.max(50, 72 - Math.floor(p.rank / 18)) : Math.max(95, 205 - Math.floor(p.rank / 2.3));
-    p.W = rp ? Math.max(2, 5 - Math.floor(p.rank / 120)) : Math.max(5, 16 - Math.floor(p.rank / 36));
-    p.L = rp ? 3 : Math.max(4, 10 - Math.floor(p.rank / 55));
-    p.QS = rp ? 0 : Math.max(0, 21 - Math.floor(p.rank / 10));
-    p.SV = rp ? Math.max(0, 38 - Math.floor(p.rank / 7)) : 0;
-    p.K = rp ? Math.max(48, 95 - Math.floor(p.rank / 5)) : Math.max(95, 245 - Math.floor(p.rank / 1.85));
-    p.BBP = rp ? Math.max(12, 30 - Math.floor(p.rank / 16)) : Math.max(26, 58 - Math.floor(p.rank / 11));
-    p.ERA = Number((rp ? 2.20 + p.rank * 0.011 : 2.70 + p.rank * 0.0065).toFixed(2));
-    p.WHIP = Number((rp ? 0.92 + p.rank * 0.0016 : 0.98 + p.rank * 0.0018).toFixed(2));
-    p.KBB = Number(Math.max(1.5, (Number(p.K) / Math.max(1, Number(p.BBP))).toFixed(2)));
-  } else {
-    p.H = Math.max(95, 192 - Math.floor(p.rank / 2.15));
-    p.R = Math.max(42, 122 - Math.floor(p.rank / 2.9));
-    p.HR = Math.max(5, 42 - Math.floor(p.rank / 8.2));
-    p.RBI = Math.max(40, 113 - Math.floor(p.rank / 3.2));
-    p.BB = Math.max(22, 95 - Math.floor(p.rank / 4.1));
-    p.SB = p.pos.includes("SS") || p.pos.includes("OF") || p.pos.includes("2B")
-      ? Math.max(1, 34 - Math.floor(p.rank / 8.8))
-      : Math.max(0, 10 - Math.floor(p.rank / 18));
-    p.AVG = Number((0.315 - p.rank * 0.00036).toFixed(3));
-    p.OBP = Number((0.405 - p.rank * 0.00046).toFixed(3));
-    p.SLG = Number((0.615 - p.rank * 0.00092).toFixed(3));
-    p.TB = Math.max(150, 338 - Math.floor(p.rank * 1.08));
+    if (rp) {
+      p.IP = clamp(Math.round(63 + (0.5 - seed) * 10 - posRank * 0.25), 48, 72);
+      p.W = clamp(Math.round(3 + seed * 3), 1, 6);
+      p.L = clamp(Math.round(2 + (1-seed) * 3), 2, 5);
+      p.QS = 0;
+      p.SV = clamp(Math.round(34 - posRank * 1.6 + seed * 4), 1, 38);
+      p.K = clamp(Math.round(94 - posRank * 1.8 + seed * 8), 42, 100);
+      p.BBP = clamp(Math.round(18 + posRank * 0.8 + seed * 4), 10, 32);
+      p.ERA = Number(clamp(2.15 + posRank * 0.08 + (seed - 0.5) * 0.35, 2.05, 4.85).toFixed(2));
+      p.WHIP = Number(clamp(0.90 + posRank * 0.02 + (seed - 0.5) * 0.12, 0.88, 1.42).toFixed(2));
+      p.KBB = Number((Number(p.K) / Math.max(1, Number(p.BBP))).toFixed(2));
+      return p;
+    }
+
+    const strikeoutArm = seed > 0.62;
+    const controlArm = seed < 0.28;
+    p.IP = clamp(Math.round(188 - posRank * 1.8 + (seed - 0.5) * 18), 105, 205);
+    p.W = clamp(Math.round(14 - posRank * 0.18 + seed * 3), 6, 18);
+    p.L = clamp(Math.round(7 + posRank * 0.06 - seed * 2), 4, 12);
+    p.QS = clamp(Math.round(20 - posRank * 0.32 + seed * 2), 4, 24);
+    p.SV = 0;
+    const kPerIp = strikeoutArm ? 1.18 : controlArm ? 0.92 : 1.03;
+    p.K = clamp(Math.round(Number(p.IP) * (kPerIp + (seed - 0.5) * 0.08)), 95, 255);
+    p.BBP = clamp(Math.round(Number(p.IP) * (controlArm ? 0.12 : strikeoutArm ? 0.20 : 0.16)), 24, 62);
+    p.ERA = Number(clamp(2.85 + posRank * 0.05 + (controlArm ? -0.12 : 0) + (strikeoutArm ? -0.04 : 0) + (seed - 0.5) * 0.25, 2.70, 5.05).toFixed(2));
+    p.WHIP = Number(clamp(0.99 + posRank * 0.012 + (controlArm ? -0.03 : 0) + (seed - 0.5) * 0.06, 0.96, 1.38).toFixed(2));
+    p.KBB = Number((Number(p.K) / Math.max(1, Number(p.BBP))).toFixed(2));
+    return p;
   }
+
+  const override = hitterOverrides[p.name];
+  if (override) return { ...p, ...override } as Player;
+
+  const speedy = ["SS","2B"].includes(bucket) || (bucket === "OF" && posRank <= 18);
+  const power = ["1B","3B","DH"].includes(bucket) || (bucket === "OF" && seed > 0.55);
+  const contact = seed < 0.3;
+
+  const paBoost = clamp(1.08 - p.rank * 0.0015 + (seed - 0.5) * 0.06, 0.78, 1.08);
+  p.H = clamp(Math.round((132 + (contact ? 18 : 0) + (speedy ? 6 : 0) - p.rank * 0.22) * paBoost), 78, 185);
+  p.R = clamp(Math.round((72 + (speedy ? 12 : 0) + (power ? 8 : 0) - p.rank * 0.16) * paBoost), 38, 120);
+  p.HR = clamp(Math.round((power ? 31 : speedy ? 18 : 23) - p.rank * (power ? 0.10 : 0.07) + (seed - 0.5) * 8), 4, 43);
+  p.RBI = clamp(Math.round((74 + (power ? 16 : 0) - p.rank * 0.15 + (seed - 0.5) * 10) * paBoost), 34, 118);
+  p.BB = clamp(Math.round((50 + (power ? 12 : 0) + (contact ? 2 : 0) - p.rank * 0.09 + seed * 10) * paBoost), 18, 112);
+  p.SB = clamp(Math.round((speedy ? 21 : bucket === "OF" ? 12 : 4) - p.rank * (speedy ? 0.08 : 0.03) + (0.5 - seed) * -8), 0, 40);
+  p.AVG = Number(clamp(0.245 + (contact ? 0.028 : 0.0) + (speedy ? 0.010 : 0.0) - p.rank * 0.00018 + (0.5 - seed) * -0.015, 0.214, 0.312).toFixed(3));
+  p.OBP = Number(clamp(Number(p.AVG) + 0.055 + (Number(p.BB) > 70 ? 0.018 : 0.0), 0.285, 0.425).toFixed(3));
+  p.SLG = Number(clamp(0.365 + Number(p.HR) * 0.0047 + (power ? 0.025 : 0.0) + (Number(p.AVG) - 0.250) * 0.6, 0.360, 0.640).toFixed(3));
+  p.TB = clamp(Math.round(Number(p.H) * Number(p.SLG)), 135, 340);
   return p;
 }
 
@@ -425,7 +495,7 @@ export default function Page() {
             </div>
 
             <div className="rounded-2xl border bg-white p-4 shadow-sm">
-              <div className="mb-2 text-lg font-semibold">Selected Player AI Breakdown</div>
+              <div className="mb-2 text-lg font-semibold">Selected Player Breakdown</div>
               {selected ? (
                 <>
                   <div className="text-lg font-semibold">{selected.name}</div>
@@ -440,6 +510,7 @@ export default function Page() {
                     <div className="rounded-xl bg-slate-50 p-2">Position: <span className="font-semibold">{selected.bucket}</span></div>
                     <div className="rounded-xl bg-slate-50 p-2">Pos Rank: <span className="font-semibold">{selected.posRank === 999 ? "—" : selected.posRank}</span></div>
                   </div>
+                  <div className="mt-3 rounded-xl border bg-blue-50 p-2 text-xs text-slate-700">Projection source: offline snapshot model calibrated by player name, position, and rank. Live refresh scaffolding can be added later without changing the draft-room experience.</div>
                   <div className="mt-3">
                     <div className="text-xs uppercase text-slate-500">Strengths</div>
                     <div className="mt-1 flex flex-wrap gap-2">
